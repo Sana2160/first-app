@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { getRecords, saveRecord } from './lib/storage';
-import { DailyRecord } from './types';
+import Link from 'next/link';
+import { getRecords, saveRecord, getSettings } from './lib/storage';
+import { DailyRecord, AppSettings } from './types';
 import Calendar from './components/Calendar';
 import BottomSheet from './components/BottomSheet';
 import EditModal from './components/EditModal';
@@ -11,6 +12,7 @@ export default function Home() {
   const [records, setRecords] = useState<DailyRecord[]>(() => getRecords());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [settings] = useState<AppSettings>(() => getSettings());
 
   const recordMap = new Map<string, DailyRecord>();
   for (const r of records) { recordMap.set(r.date, r); }
@@ -41,12 +43,21 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-white flex flex-col">
-      <Calendar records={records} onDayPress={handleDayPress} />
+      <Calendar
+        records={records}
+        onDayPress={handleDayPress}
+        themeColor={settings.themeColor}
+        showWeightGraph={settings.showWeightGraph}
+        showBodyFatGraph={settings.showBodyFatGraph}
+        showInputValues={settings.showInputValues}
+        showDiffArrows={settings.showDiffArrows}
+      />
       <BottomSheet
         date={selectedDate}
         record={recordMap.get(selectedDate ?? '')}
         onEdit={handleEdit}
         onClose={handleCloseSheet}
+        themeColor={settings.themeColor}
       />
       <EditModal
         date={selectedDate}
@@ -55,7 +66,15 @@ export default function Home() {
         isOpen={isEditOpen}
         onSave={handleSave}
         onClose={handleCloseModal}
+        themeColor={settings.themeColor}
       />
+      <Link
+        href="/settings"
+        className="fixed bottom-4 right-4 z-50 flex items-center justify-center min-w-[44px] min-h-[44px] bg-white rounded-full shadow-md text-gray-600 text-xl"
+        aria-label="設定"
+      >
+        ⚙
+      </Link>
     </main>
   );
 }

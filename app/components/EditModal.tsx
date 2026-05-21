@@ -10,6 +10,7 @@ type Props = {
   isOpen: boolean;
   onSave: (record: DailyRecord) => void;
   onClose: () => void;
+  themeColor: string;
 };
 
 // 選択日より過去の記録の中で最も日付が近いものを返す
@@ -24,7 +25,7 @@ function formatTitle(dateStr: string): string {
   return `${year}年${month}月${day}日の記録`;
 }
 
-export default function EditModal({ date, record, records, isOpen, onSave, onClose }: Props) {
+export default function EditModal({ date, record, records, isOpen, onSave, onClose, themeColor }: Props) {
   const [weight, setWeight] = useState<string>(
     record !== undefined ? String(record.weight) : ''
   );
@@ -108,7 +109,7 @@ export default function EditModal({ date, record, records, isOpen, onSave, onClo
                 placeholder="0.0"
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-gray-800 text-base focus:outline-none focus:border-[#4DD0C4]"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-gray-800 text-base focus:outline-none focus:border-gray-400"
               />
             </div>
             <div>
@@ -119,7 +120,7 @@ export default function EditModal({ date, record, records, isOpen, onSave, onClo
                 placeholder="0.0"
                 value={bodyFat}
                 onChange={(e) => setBodyFat(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-gray-800 text-base focus:outline-none focus:border-[#4DD0C4]"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-gray-800 text-base focus:outline-none focus:border-gray-400"
               />
             </div>
           </div>
@@ -127,7 +128,8 @@ export default function EditModal({ date, record, records, isOpen, onSave, onClo
           {/* 保存ボタン */}
           <button
             onClick={handleSave}
-            className="w-full bg-[#4DD0C4] text-white py-3 rounded-xl font-medium"
+            className="w-full text-white py-3 rounded-xl font-medium"
+            style={{ backgroundColor: themeColor }}
           >
             保存
           </button>

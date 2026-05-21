@@ -6,6 +6,11 @@ import { DailyRecord } from "../types";
 type Props = {
   records: DailyRecord[];
   onDayPress: (date: string) => void;
+  themeColor: string;
+  showWeightGraph: boolean;
+  showBodyFatGraph: boolean;
+  showInputValues: boolean;
+  showDiffArrows: boolean;
 };
 
 type CalendarCell = {
@@ -18,6 +23,12 @@ function toDateString(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+function getPrevDateString(dateStr: string): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() - 1);
+  return toDateString(d);
 }
 
 function buildCalendarCells(year: number, month: number): CalendarCell[] {
@@ -60,13 +71,15 @@ function buildCalendarCells(year: number, month: number): CalendarCell[] {
 type WeightGraphProps = {
   cells: CalendarCell[];
   recordMap: Map<string, DailyRecord>;
+  themeColor: string;
 };
 
 function WeightGraph({
   cells,
   recordMap,
+  themeColor,
 }: WeightGraphProps): React.ReactElement | null {
-  type Dot = { x: number; y: number; col: number; isCurrentMonth: boolean };
+  type Dot = { x: number; y: number; col: number; row: number; isCurrentMonth: boolean };
 
   // min/max は全セル（前後月含む）の記録値で計算する
   const weights: number[] = [];
@@ -101,7 +114,7 @@ function WeightGraph({
           16 -
           ((record.weight - minWeight) / (maxWeight - minWeight)) * 32;
 
-    dots.push({ x: cx, y: normalizedY, col, isCurrentMonth: cell.isCurrentMonth });
+    dots.push({ x: cx, y: normalizedY, col, row, isCurrentMonth: cell.isCurrentMonth });
   }
 
   // dots を週ごとのグループに分割（col が前の点以下になったら週をまたいだと判断）
@@ -110,7 +123,7 @@ function WeightGraph({
   let currentWeek: WeekDot[] = [];
 
   for (let i = 0; i < dots.length; i++) {
-    if (i > 0 && dots[i].col <= dots[i - 1].col) {
+    if (i > 0 && dots[i].row !== dots[i - 1].row) {
       weekGroups.push(currentWeek);
       currentWeek = [];
     }
@@ -144,7 +157,7 @@ function WeightGraph({
             key={`${wi}-${si}`}
             points={segment.points.map((d) => `${d.x},${d.y}`).join(" ")}
             fill="none"
-            stroke="#4DD0C4"
+            stroke={themeColor}
             strokeWidth="2"
             opacity={segment.isCurrentMonth ? 0.6 : 0.3}
           />
@@ -156,7 +169,7 @@ function WeightGraph({
           cx={dot.x}
           cy={dot.y}
           r="3"
-          fill="#4DD0C4"
+          fill={themeColor}
           opacity={dot.isCurrentMonth ? 0.8 : 0.3}
         />
       ))}
@@ -164,9 +177,104 @@ function WeightGraph({
   );
 }
 
+type BodyFatGraphProps = {
+  cells: CalendarCell[];
+  recordMap: Map<string, DailyRecord>;
+};
+
+function BodyFatGraph({ cells, recordMap }: BodyFatGraphProps): React.ReactElement | null {
+  type Dot = { x: number; y: number; col: number; row: number; isCurrentMonth: boolean };
+  const BODY_FAT_COLOR = '#F59E0B';
+
+  const dots: Dot[] = [];
+  const bodyFats: number[] = [];
+
+  for (let cellIndex = 0; cellIndex < cells.length; cellIndex++) {
+    const cell = cells[cellIndex];
+    const dateStr = toDateString(cell.date);
+    const record = recordMap.get(dateStr);
+    if (record === undefined || record.bodyFat === 0) continue;
+    bodyFats.push(record.bodyFat);
+  }
+
+  if (bodyFats.length === 0) return null;
+
+  const minBodyFat = Math.min(...bodyFats);
+  const maxBodyFat = Math.max(...bodyFats);
+
+  for (let cellIndex = 0; cellIndex < cells.length; cellIndex++) {
+    const cell = cells[cellIndex];
+    const dateStr = toDateString(cell.date);
+    const record = recordMap.get(dateStr);
+    if (record === undefined || record.bodyFat === 0) continue;
+
+    const col = cellIndex % 7;
+    const row = Math.floor(cellIndex / 7);
+    const cx = (col + 0.5) * 100;
+    const baseCenterY = (row + 0.5) * 56;
+
+    const normalizedY =
+      minBodyFat === maxBodyFat
+        ? baseCenterY
+        : baseCenterY + 16 - ((record.bodyFat - minBodyFat) / (maxBodyFat - minBodyFat)) * 32;
+
+    dots.push({ x: cx, y: normalizedY, col, row, isCurrentMonth: cell.isCurrentMonth });
+  }
+
+  type WeekDot = { x: number; y: number; isCurrentMonth: boolean };
+  const weekGroups: WeekDot[][] = [];
+  let currentWeek: WeekDot[] = [];
+
+  for (let i = 0; i < dots.length; i++) {
+    if (i > 0 && dots[i].row !== dots[i - 1].row) {
+      weekGroups.push(currentWeek);
+      currentWeek = [];
+    }
+    currentWeek.push({ x: dots[i].x, y: dots[i].y, isCurrentMonth: dots[i].isCurrentMonth });
+  }
+  if (currentWeek.length > 0) weekGroups.push(currentWeek);
+
+  return (
+    <svg
+      viewBox="0 0 700 336"
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      preserveAspectRatio="none"
+    >
+      {weekGroups.map((week, wi) => {
+        const segments: { points: WeekDot[]; isCurrentMonth: boolean }[] = [];
+        let seg: WeekDot[] = [];
+        let segCurrent = week[0]?.isCurrentMonth ?? true;
+        for (const dot of week) {
+          if (dot.isCurrentMonth !== segCurrent) {
+            if (seg.length > 0) segments.push({ points: seg, isCurrentMonth: segCurrent });
+            seg = [];
+            segCurrent = dot.isCurrentMonth;
+          }
+          seg.push(dot);
+        }
+        if (seg.length > 0) segments.push({ points: seg, isCurrentMonth: segCurrent });
+
+        return segments.map((segment, si) => (
+          <polyline
+            key={`${wi}-${si}`}
+            points={segment.points.map((d) => `${d.x},${d.y}`).join(' ')}
+            fill="none"
+            stroke={BODY_FAT_COLOR}
+            strokeWidth="2"
+            opacity={segment.isCurrentMonth ? 0.6 : 0.3}
+          />
+        ));
+      })}
+      {dots.map((dot, i) => (
+        <circle key={i} cx={dot.x} cy={dot.y} r="3" fill={BODY_FAT_COLOR} opacity={dot.isCurrentMonth ? 0.8 : 0.3} />
+      ))}
+    </svg>
+  );
+}
+
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
-export default function Calendar({ records, onDayPress }: Props) {
+export default function Calendar({ records, onDayPress, themeColor, showWeightGraph, showBodyFatGraph, showInputValues, showDiffArrows }: Props) {
   const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
   const [todayString, setTodayString] = useState<string>('');
 
@@ -200,7 +308,10 @@ export default function Calendar({ records, onDayPress }: Props) {
   return (
     <div className="w-full">
       {/* ヘッダー */}
-      <div className="bg-[#4DD0C4] flex items-center justify-between px-4 py-3 relative z-50">
+      <div
+        className="flex items-center justify-between px-4 py-3 relative z-50"
+        style={{ backgroundColor: themeColor }}
+      >
         <button
           onClick={goToPrevMonth}
           className="text-white text-xl font-bold p-3 min-w-[44px] min-h-[44px] flex items-center justify-center"
@@ -221,24 +332,40 @@ export default function Calendar({ records, onDayPress }: Props) {
       </div>
 
       {/* 曜日行 */}
-      <div className="grid grid-cols-7 bg-[#4DD0C4]/10">
-        {WEEKDAYS.map((day) => (
-          <div
-            key={day}
-            className="text-center text-xs font-medium text-gray-600 py-2"
-          >
-            {day}
-          </div>
-        ))}
+      <div
+        className="grid grid-cols-7"
+        style={{ backgroundColor: `${themeColor}1A` }}
+      >
+        {WEEKDAYS.map((day, dayIndex) => {
+          const headerTextColor =
+            dayIndex === 0 ? 'text-red-500' :
+            dayIndex === 6 ? 'text-blue-500' :
+            'text-gray-600';
+          return (
+            <div
+              key={day}
+              className={`text-center text-xs font-medium py-2 ${headerTextColor}`}
+            >
+              {day}
+            </div>
+          );
+        })}
       </div>
 
       {/* 日付グリッド */}
       <div className="relative grid grid-cols-7">
-        <WeightGraph cells={cells} recordMap={recordMap} />
+        {showWeightGraph && <WeightGraph cells={cells} recordMap={recordMap} themeColor={themeColor} />}
+        {showBodyFatGraph && <BodyFatGraph cells={cells} recordMap={recordMap} />}
         {cells.map((cell, index) => {
           const dateStr = toDateString(cell.date);
           const record = recordMap.get(dateStr);
+          const prevRecord = recordMap.get(getPrevDateString(dateStr));
+          const weightDiff: number | null =
+            record !== undefined && prevRecord !== undefined
+              ? record.weight - prevRecord.weight
+              : null;
           const isToday = dateStr === todayString;
+          const dayOfWeek = index % 7; // 0=日, 6=土
 
           return (
             <button
@@ -246,20 +373,34 @@ export default function Calendar({ records, onDayPress }: Props) {
               onClick={() => onDayPress(dateStr)}
               className={[
                 "relative z-10 flex flex-col items-center justify-start py-1 px-0.5 min-h-[56px] sm:min-h-[64px] border-b border-r border-gray-100",
-                isToday ? "bg-[#4DD0C4]/20" : "",
                 cell.isCurrentMonth ? "text-gray-800" : "text-gray-300",
+                !isToday && dayOfWeek === 0 ? 'text-red-500' : '',
+                !isToday && dayOfWeek === 6 ? 'text-blue-500' : '',
+                !isToday && dayOfWeek === 0 ? 'bg-red-500/10' : '',
+                !isToday && dayOfWeek === 6 ? 'bg-blue-500/10' : '',
               ]
                 .filter(Boolean)
                 .join(" ")}
+              style={isToday ? { backgroundColor: `${themeColor}33` } : undefined}
             >
               <span
-                className={`text-sm ${isToday ? "font-bold text-[#4DD0C4]" : ""}`}
+                className="text-sm"
+                style={isToday ? { fontWeight: 'bold', color: themeColor } : undefined}
               >
                 {cell.date.getDate()}
               </span>
-              {record !== undefined && (
+              {record !== undefined && showInputValues && (
                 <span className="text-[10px] text-gray-500 leading-tight">
                   {record.weight.toFixed(1)} kg
+                </span>
+              )}
+              {weightDiff !== null && weightDiff !== 0 && showDiffArrows && (
+                <span
+                  className={`text-[10px] leading-tight ${
+                    weightDiff > 0 ? 'text-red-500' : 'text-blue-500'
+                  }`}
+                >
+                  {weightDiff > 0 ? '↑' : '↓'}
                 </span>
               )}
             </button>

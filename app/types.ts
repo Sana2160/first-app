@@ -3,3 +3,11 @@ export type DailyRecord = {
   weight: number;  // kg
   bodyFat: number; // %
 };
+
+export type AppSettings = {
+  themeColor: string;
+  showWeightGraph: boolean;
+  showBodyFatGraph: boolean;
+  showInputValues: boolean;
+  showDiffArrows: boolean;
+};

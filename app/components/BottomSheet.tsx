@@ -8,6 +8,7 @@ type Props = {
   record: DailyRecord | undefined;
   onEdit: () => void;
   onClose: () => void;
+  themeColor: string;
 };
 
 function formatDate(dateStr: string): string {
@@ -18,7 +19,7 @@ function formatDate(dateStr: string): string {
   return `${month}月${day}日（${weekday}）`;
 }
 
-export default function BottomSheet({ date, record, onEdit, onClose }: Props) {
+export default function BottomSheet({ date, record, onEdit, onClose, themeColor }: Props) {
   const [translateY, setTranslateY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startYRef = useRef<number>(0);
@@ -110,7 +111,8 @@ export default function BottomSheet({ date, record, onEdit, onClose }: Props) {
               onEdit();
             }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="w-full bg-[#4DD0C4] text-white py-3 rounded-xl font-medium"
+            className="w-full text-white py-3 rounded-xl font-medium"
+            style={{ backgroundColor: themeColor }}
           >
             編集
           </button>
