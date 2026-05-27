@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { DailyRecord } from '../types';
+import { DailyRecord, WeeklySummary } from '../types';
 
 type Props = {
   date: string | null;
@@ -9,6 +9,7 @@ type Props = {
   onEdit: () => void;
   onClose: () => void;
   themeColor: string;
+  weeklySummary: WeeklySummary | null;
 };
 
 function formatDate(dateStr: string): string {
@@ -19,7 +20,7 @@ function formatDate(dateStr: string): string {
   return `${month}月${day}日（${weekday}）`;
 }
 
-export default function BottomSheet({ date, record, onEdit, onClose, themeColor }: Props) {
+export default function BottomSheet({ date, record, onEdit, onClose, themeColor, weeklySummary }: Props) {
   const [translateY, setTranslateY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startYRef = useRef<number>(0);
@@ -105,6 +106,28 @@ export default function BottomSheet({ date, record, onEdit, onClose, themeColor 
             </div>
           </div>
 
+          {weeklySummary !== null && (
+            <div className="mb-4">
+              <hr className="border-gray-200 mb-4" />
+              <p className="text-xs font-medium text-gray-500 mb-2">今週の記録</p>
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-500">体重増減</span>
+                  <span className={`text-sm font-medium ${weeklySummary.weightChange > 0 ? 'text-red-500' : weeklySummary.weightChange < 0 ? 'text-blue-500' : 'text-gray-800'}`}>
+                    {weeklySummary.weightChange > 0 ? '+' : ''}{weeklySummary.weightChange.toFixed(1)} kg
+                  </span>
+                </div>
+                {weeklySummary.targetDiff !== null && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">目標まで</span>
+                    <span className="text-sm font-medium text-gray-800">
+                      {weeklySummary.targetDiff <= 0 ? '達成済み' : `あと ${weeklySummary.targetDiff.toFixed(1)} kg`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();

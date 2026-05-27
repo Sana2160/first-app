@@ -8,6 +8,15 @@ export type AppSettings = {
   themeColor: string;
   showWeightGraph: boolean;
   showBodyFatGraph: boolean;
-  showInputValues: boolean;
+  showWeightValue: boolean;
+  showBodyFatValue: boolean;
   showDiffArrows: boolean;
+  targetWeight: number | null;
 };
+
+export type WeeklySummary = {
+  weightChange: number;
+  targetDiff: number | null;
+};
+
+export type Holidays = Record<string, string>;

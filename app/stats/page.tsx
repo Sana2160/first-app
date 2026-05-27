@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getRecords, getSettings } from '../lib/storage';
 import { DailyRecord } from '../types';
@@ -251,12 +251,19 @@ function YearlyChart({
 }
 
 export default function StatsPage() {
-  const [records] = useState<DailyRecord[]>(() => getRecords());
-  const [themeColor] = useState<string>(() => getSettings().themeColor);
+  const [records, setRecords] = useState<DailyRecord[]>([]);
+  const [themeColor, setThemeColor] = useState<string>('#4DD0C4');
   const [tab, setTab] = useState<'monthly' | 'yearly'>('monthly');
-  const today = new Date();
-  const [targetYear, setTargetYear] = useState<number>(today.getFullYear());
-  const [targetMonth, setTargetMonth] = useState<number>(today.getMonth());
+  const [targetYear, setTargetYear] = useState<number>(0);
+  const [targetMonth, setTargetMonth] = useState<number>(0);
+
+  useEffect(() => {
+    setRecords(getRecords());
+    setThemeColor(getSettings().themeColor);
+    const today = new Date();
+    setTargetYear(today.getFullYear());
+    setTargetMonth(today.getMonth());
+  }, []);
 
   function goToPrevMonth(): void {
     if (targetMonth === 0) {

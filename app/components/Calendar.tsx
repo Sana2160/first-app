@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { DailyRecord } from "../types";
+import { DailyRecord, Holidays } from "../types";
 
 type Props = {
   records: DailyRecord[];
@@ -9,8 +9,10 @@ type Props = {
   themeColor: string;
   showWeightGraph: boolean;
   showBodyFatGraph: boolean;
-  showInputValues: boolean;
+  showWeightValue: boolean;
+  showBodyFatValue: boolean;
   showDiffArrows: boolean;
+  holidays: Holidays;
 };
 
 type CalendarCell = {
@@ -274,17 +276,15 @@ function BodyFatGraph({ cells, recordMap }: BodyFatGraphProps): React.ReactEleme
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
-export default function Calendar({ records, onDayPress, themeColor, showWeightGraph, showBodyFatGraph, showInputValues, showDiffArrows }: Props) {
+export default function Calendar({ records, onDayPress, themeColor, showWeightGraph, showBodyFatGraph, showWeightValue, showBodyFatValue, showDiffArrows, holidays }: Props) {
   const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
   const [todayString, setTodayString] = useState<string>('');
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const today = new Date();
     setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
     setTodayString(toDateString(today));
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (currentMonth === null) return null;
 
@@ -366,18 +366,23 @@ export default function Calendar({ records, onDayPress, themeColor, showWeightGr
               : null;
           const isToday = dateStr === todayString;
           const dayOfWeek = index % 7; // 0=日, 6=土
+          const isHoliday = dateStr in holidays;
+          const isSunday = dayOfWeek === 0;
+          const isSaturday = dayOfWeek === 6;
+          const isRed = !isToday && !isSaturday && (isSunday || isHoliday);
+          const isBlue = !isToday && isSaturday;
 
           return (
             <button
               key={dateStr}
               onClick={() => onDayPress(dateStr)}
               className={[
-                "relative z-10 flex flex-col items-center justify-start py-1 px-0.5 min-h-[56px] sm:min-h-[64px] border-b border-r border-gray-100",
+                "relative z-10 flex flex-col items-center justify-between py-1 px-0.5 min-h-[56px] sm:min-h-[64px] border-b border-r border-gray-100",
                 cell.isCurrentMonth ? "text-gray-800" : "text-gray-300",
-                !isToday && dayOfWeek === 0 ? 'text-red-500' : '',
-                !isToday && dayOfWeek === 6 ? 'text-blue-500' : '',
-                !isToday && dayOfWeek === 0 ? 'bg-red-500/10' : '',
-                !isToday && dayOfWeek === 6 ? 'bg-blue-500/10' : '',
+                isRed ? 'text-red-500' : '',
+                isBlue ? 'text-blue-500' : '',
+                isRed ? 'bg-red-500/10' : '',
+                isBlue ? 'bg-blue-500/10' : '',
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -389,19 +394,32 @@ export default function Calendar({ records, onDayPress, themeColor, showWeightGr
               >
                 {cell.date.getDate()}
               </span>
-              {record !== undefined && showInputValues && (
-                <span className="text-[10px] text-gray-500 leading-tight">
-                  {record.weight.toFixed(1)} kg
-                </span>
-              )}
+              <div className="flex flex-col items-center w-full mt-auto">
+                {record !== undefined && showWeightValue && (
+                  <span className="text-[10px] text-gray-500 leading-tight">
+                    {record.weight.toFixed(1)} kg
+                  </span>
+                )}
+                {record !== undefined && showBodyFatValue && record.bodyFat > 0 && (
+                  <span className="text-[10px] text-gray-400 leading-tight">
+                    {record.bodyFat.toFixed(1)} %
+                  </span>
+                )}
+              </div>
               {weightDiff !== null && weightDiff !== 0 && showDiffArrows && (
-                <span
-                  className={`text-[10px] leading-tight ${
-                    weightDiff > 0 ? 'text-red-500' : 'text-blue-500'
-                  }`}
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  className="absolute bottom-0 left-0 pointer-events-none"
+    aria-hidden="true"
                 >
-                  {weightDiff > 0 ? '↑' : '↓'}
-                </span>
+                  {weightDiff > 0 ? (
+                    <polygon points="8,2 14,13 2,13" fill="#EF4444" />
+                  ) : (
+                    <polygon points="8,14 14,3 2,3" fill="#3B82F6" />
+                  )}
+                </svg>
               )}
             </button>
           );
